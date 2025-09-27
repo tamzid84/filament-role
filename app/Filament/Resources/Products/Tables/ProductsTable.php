@@ -16,7 +16,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProductsExport;
 use App\Exports\ExcellCollectionExport;
 use Filament\Tables;
-
+use Filament\Actions\Action;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Tables\Actions\BulkAction;
 
 
@@ -63,11 +64,36 @@ class ProductsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                    ->authorize(fn () => auth()->user()?->hasRole('Admin')),
-               
-               
-
+                    ->visible(fn () => auth()->user()->can('delete products')),
                 ]),
+               
+                Action::make('Export Excel')
+                ->icon('heroicon-o-document-arrow-down')
+                ->action(function () {
+                    return Excel::download(new ProductsExport, 'products.xlsx');
+                }),
+            ])
+            ->headerActions([
+                // BulkActionGroup::make([
+                //     DeleteBulkAction::make()
+                //     ->authorize(fn () => auth()->user()?->hasRole('Admin')),
+               
+               Action::make('Export PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->action(function () {
+                    $products = \App\Models\Product::all();
+
+                    $pdf = Pdf::loadView('pdf.products', [
+                        'products' => $products,
+                    ]);
+
+                    return response()->streamDownload(
+                        fn() => print($pdf->output()),
+                        'products.pdf'
+                    );
+                }),
+
+                
 
                
             ]);
